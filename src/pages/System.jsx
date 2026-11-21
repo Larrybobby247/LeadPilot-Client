@@ -85,20 +85,29 @@ function Reminders() {
     {log.data?.items?.length > 0 && <details className="text-sm"><summary className="cursor-pointer text-primary">Reminder history</summary><table className="w-full mt-2"><tbody>{log.data.items.slice(0, 20).map((r) => <tr key={r.id} className="border-b border-line"><td className="py-1">{r.user}</td><td>{r.kind}</td><td>{r.dateKey}</td><td>{r.status}{r.error ? ` (${r.error})` : ''}</td></tr>)}</tbody></table></details>}</section>;
 }
 function Products() {
-    const { notify } = useApp();
-    const qc = useQueryClient();
-    const q = useQuery({ queryKey: ['settings'], queryFn: () => api('/settings') });
-    const [p, setP] = useState(null);
-    useEffect(() => { if (q.data)
-        setP(q.data.products || {}); }, [q.data]);
-    const save = useMutation({ mutationFn: () => api('/settings', { method: 'PUT', body: { products: p } }), onSuccess: () => { notify('Product information saved'); qc.invalidateQueries({ queryKey: ['settings'] }); }, onError: (e) => notify(e.issues?.[0]?.message || e.message) });
-    if (!p)
-        return null;
-    const set = (d, k, v) => setP({ ...p, [d]: { ...(p[d] || {}), [k]: v } });
-    return <section className="card p-5 space-y-4"><div><h2 className="font-medium">Approved product information</h2><p className="text-xs text-muted">The AI may only state what you write here. If pricing is empty it will never quote a price.</p></div>
-    {['ordarly', 'keykonnec', 'website'].map((d) => <div key={d} className="space-y-2 border-t border-line pt-3"><div className="font-medium text-sm" style={{ color: DEPT[d].color }}>{DEPT[d].name}</div><div className="grid sm:grid-cols-2 gap-2"><input className="input" placeholder="Product or company name" value={p[d]?.productName || ''} onChange={(e) => set(d, 'productName', e.target.value)}/><input className="input" placeholder="Demo link" value={p[d]?.demoLink || ''} onChange={(e) => set(d, 'demoLink', e.target.value)}/><input className="input" placeholder="Signup link" value={p[d]?.signupLink || ''} onChange={(e) => set(d, 'signupLink', e.target.value)}/></div>
-      <textarea className="input" placeholder="What it is and what it does (facts only)" value={p[d]?.description || ''} onChange={(e) => set(d, 'description', e.target.value)}/><textarea className="input" placeholder="Pricing (exactly as you want it quoted)" value={p[d]?.pricing || ''} onChange={(e) => set(d, 'pricing', e.target.value)}/><textarea className="input" placeholder="Approved notes on competitors, e.g. how you differ from Chowdeck" value={p[d]?.competitorNotes || ''} onChange={(e) => set(d, 'competitorNotes', e.target.value)}/></div>)}
-    <button className="btn btn-primary" onClick={() => save.mutate()}>Save product information</button></section>;
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['settings'], queryFn: () => api('/settings') });
+  const [edits, setEdits] = useState({}); // only what you actually changed is sent, so nothing else is required
+  const [msg, setMsg] = useState(null);
+  const saved = q.data?.products || {};
+  const val = (d, k) => edits[d]?.[k] ?? saved[d]?.[k] ?? '';
+  const set = (d, k, v) => { setMsg(null); setEdits({ ...edits, [d]: { ...(edits[d] || {}), [k]: v } }); };
+  const dirty = Object.values(edits).some((o) => Object.keys(o).length);
+  const save = useMutation({
+    mutationFn: () => api('/settings', { method: 'PUT', body: { products: edits } }),
+    onSuccess: () => { setEdits({}); setMsg({ ok: true, text: 'Saved. The AI will use this information from now on.' }); qc.invalidateQueries({ queryKey: ['settings'] }); },
+    onError: (e) => setMsg({ ok: false, text: e.issues?.[0] ? `${e.issues[0].path.replace('.', ' / ')}: ${e.issues[0].message}` : e.message }),
+  });
+  return <section className="card p-5 space-y-4">
+    <div><h2 className="font-medium">Approved product information</h2><p className="text-xs text-muted">Every field is optional. Fill in only what you have; blank fields are left as they are. The AI only states what you write here, and it never quotes a price if pricing is empty.</p></div>
+    {['ordarly', 'keykonnec', 'website'].map((d) => <div key={d} className="space-y-2 border-t border-line pt-3"><div className="font-medium text-sm" style={{ color: DEPT[d].color }}>{DEPT[d].name}</div>
+      <div className="grid sm:grid-cols-2 gap-2"><input className="input" placeholder="Product or company name" aria-label={`${DEPT[d].name} name`} value={val(d, 'productName')} onChange={(e) => set(d, 'productName', e.target.value)} /><input className="input" placeholder="Demo link, e.g. ordarly.com/demo" aria-label={`${DEPT[d].name} demo link`} value={val(d, 'demoLink')} onChange={(e) => set(d, 'demoLink', e.target.value)} /><input className="input" placeholder="Signup link" aria-label={`${DEPT[d].name} signup link`} value={val(d, 'signupLink')} onChange={(e) => set(d, 'signupLink', e.target.value)} /></div>
+      <textarea className="input" placeholder="What it is and what it does (facts only)" aria-label={`${DEPT[d].name} description`} value={val(d, 'description')} onChange={(e) => set(d, 'description', e.target.value)} />
+      <textarea className="input" placeholder="Pricing, exactly as you want it quoted" aria-label={`${DEPT[d].name} pricing`} value={val(d, 'pricing')} onChange={(e) => set(d, 'pricing', e.target.value)} />
+      <textarea className="input" placeholder="Approved notes on competitors, e.g. how you differ from Chowdeck" aria-label={`${DEPT[d].name} competitor notes`} value={val(d, 'competitorNotes')} onChange={(e) => set(d, 'competitorNotes', e.target.value)} /></div>)}
+    <div className="flex flex-wrap items-center gap-3"><button className="btn btn-primary" disabled={!dirty || save.isPending} onClick={() => save.mutate()}>{save.isPending ? 'Saving...' : 'Save product information'}</button>
+      {msg && <span role={msg.ok ? 'status' : 'alert'} className={`text-sm ${msg.ok ? 'text-ok' : 'text-danger'}`}>{msg.text}</span>}{!dirty && !msg && <span className="text-xs text-muted">No changes yet.</span>}</div>
+  </section>;
 }
 function DuplicateProtection() {
     const { notify } = useApp();
