@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader, Empty } from '../components/Layout';
 import { Skeleton, ErrorBox, Modal, Field, Stat } from '../components/ui';
 import { api, qs } from '../services/api';
+import StatePicker from '../components/StatePicker';
 import { useApp } from '../context/AppContext';
 import { DEPT, fmt, fmtDay } from '../constants';
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -28,6 +29,7 @@ export default function Team() {
     const [invite, setInvite] = useState(false);
     const [editing, setEditing] = useState(null);
     const [link, setLink] = useState(null);
+    const [statesFor, setStatesFor] = useState(null);
     const [filter, setFilter] = useState({ status: '', campaign: '', date: '' });
     const team = useQuery({ queryKey: ['team'], queryFn: () => api('/team') });
     const invs = useQuery({ queryKey: ['invitations'], queryFn: () => api('/invitations') });
@@ -46,15 +48,16 @@ export default function Team() {
       <select className="input !w-auto" value={filter.campaign} onChange={(e) => setFilter({ ...filter, campaign: e.target.value })} aria-label="Campaign"><option value="">All campaigns</option>{ALL.map((d) => <option key={d} value={d}>{DEPT[d].name}</option>)}</select><input type="date" className="input !w-auto" value={filter.date} onChange={(e) => setFilter({ ...filter, date: e.target.value })} aria-label="Date"/></div>
       {goals.isLoading ? <Skeleton /> : goals.error ? <ErrorBox error={goals.error} retry={goals.refetch}/> : !goals.data.items.length ? <Empty title="No one matches" desc="Change the filters."/> : <div className="card overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-line">{['Name', 'Assigned campaigns', "Today's campaign", 'Target', 'Done', 'Left', '%', 'Status', 'Last outreach', ''].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
         <tbody>{goals.data.items.map((r) => <tr key={r.id} className="border-b border-line last:border-0"><td className="td font-medium">{r.name}</td><td className="td">{r.campaigns.map((c) => DEPT[c].name).join(', ')}</td><td className="td">{r.restDay ? 'Rest' : r.scheduled.map((c) => DEPT[c].name).join(', ')}</td><td className="td">{r.restDay ? '-' : r.target}</td><td className="td">{r.completed}</td><td className="td">{r.restDay ? '-' : r.remaining}</td><td className="td">{r.restDay ? '-' : r.percent + '%'}</td><td className="td capitalize">{r.status.replace('_', ' ')}</td><td className="td whitespace-nowrap">{fmt(r.lastOutreachAt)}</td><td className="td"><button className="text-primary text-sm" onClick={async () => setEditing({ id: r.id, name: r.name, ...(await api(`/goals/user/${r.id}`)) })}>Edit goals</button></td></tr>)}</tbody></table></div>}</>}
-    {tab === 'members' && (team.isLoading ? <Skeleton /> : <div className="card overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-line">{['Member', 'Email', 'Workspaces', 'Leads', 'Contacted', 'Last active', 'Status', ''].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
-      <tbody>{members.map((m) => <tr key={m.id} className="border-b border-line last:border-0"><td className="td font-medium">{m.name}{m.role === 'owner' ? ' (owner)' : ''}</td><td className="td">{m.email}</td><td className="td">{(m.role === 'owner' ? ALL : m.departments).map((d) => DEPT[d].name).join(', ')}</td><td className="td">{m.leads}</td><td className="td">{m.contacted}</td><td className="td whitespace-nowrap">{fmt(m.lastActiveAt)}</td><td className="td">{m.active ? 'Active' : 'Deactivated'}</td>
-        <td className="td whitespace-nowrap">{m.role !== 'owner' && <><button className="text-primary text-sm mr-3" onClick={async () => setEditing({ id: m.id, name: m.name, ...(await api(`/goals/user/${m.id}`)) })}>Goals</button><button className="text-sm text-danger" onClick={() => act.mutate({ path: `/team/${m.id}`, method: 'PATCH', body: { active: !m.active } })}>{m.active ? 'Deactivate' : 'Reactivate'}</button></>}</td></tr>)}</tbody></table></div>)}
+    {tab === 'members' && (team.isLoading ? <Skeleton /> : <div className="card overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-line">{['Member', 'Email', 'Workspaces', 'States', 'Leads', 'Contacted', 'Last active', 'Status', ''].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
+      <tbody>{members.map((m) => <tr key={m.id} className="border-b border-line last:border-0"><td className="td font-medium">{m.name}{m.role === 'owner' ? ' (owner)' : ''}</td><td className="td">{m.email}</td><td className="td">{(m.role === 'owner' ? ALL : m.departments).map((d) => DEPT[d].name).join(', ')}</td><td className="td max-w-[200px]">{m.states?.length ? m.states.join(', ') : <span className="text-muted">{m.role === 'owner' ? 'All states' : 'All (not restricted)'}</span>}</td><td className="td">{m.leads}</td><td className="td">{m.contacted}</td><td className="td whitespace-nowrap">{fmt(m.lastActiveAt)}</td><td className="td">{m.active ? 'Active' : 'Deactivated'}</td>
+        <td className="td whitespace-nowrap"><button className="text-primary text-sm mr-3" onClick={() => setStatesFor(m)}>States</button>{m.role !== 'owner' && <><button className="text-primary text-sm mr-3" onClick={async () => setEditing({ id: m.id, name: m.name, ...(await api(`/goals/user/${m.id}`)) })}>Goals</button><button className="text-sm text-danger" onClick={() => act.mutate({ path: `/team/${m.id}`, method: 'PATCH', body: { active: !m.active } })}>{m.active ? 'Deactivate' : 'Reactivate'}</button></>}</td></tr>)}</tbody></table></div>)}
     {tab === 'invitations' && (invs.isLoading ? <Skeleton /> : !invs.data.items.length ? <Empty title="No invitations" desc="Invite a team member to get started." action={<button className="btn btn-primary" onClick={() => setInvite(true)}>Invite team member</button>}/> : <div className="card overflow-x-auto"><table className="w-full"><thead><tr className="border-b border-line">{['Email', 'Workspaces', 'Status', 'Expires', ''].map((h) => <th key={h} className="th">{h}</th>)}</tr></thead>
       <tbody>{invs.data.items.map((i) => {
                 const expired = i.status === 'pending' && new Date(i.expiresAt) < new Date();
                 return <tr key={i._id} className="border-b border-line last:border-0"><td className="td">{i.email}</td><td className="td">{i.departments.map((d) => DEPT[d].name).join(', ')}</td><td className="td capitalize">{expired ? 'expired' : i.status}</td><td className="td">{fmtDay(i.expiresAt)}</td>
         <td className="td whitespace-nowrap">{i.status === 'pending' && <><button className="text-primary text-sm mr-3" onClick={() => act.mutate({ path: `/invitations/${i._id}/resend` })}>Resend</button><button className="text-danger text-sm" onClick={() => act.mutate({ path: `/invitations/${i._id}/revoke` })}>Revoke</button></>}</td></tr>;
             })}</tbody></table></div>)}
+    {statesFor && <StatesModal m={statesFor} onClose={() => setStatesFor(null)} onSaved={() => { setStatesFor(null); notify('States saved'); inv(); }}/>}
     {invite && <InviteModal onClose={() => setInvite(false)} onDone={(r) => { setInvite(false); setLink(r); inv(); }}/>}
     {editing && editing.schedule && <GoalsModal u={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); notify('Goals saved'); inv(); }}/>}
     {link && <Modal title="Invitation link" desc="Single use. Expires in 72 hours." onClose={() => setLink(null)}><div className="space-y-3"><input className="input" readOnly value={link.link} aria-label="Invitation link" onFocus={(e) => e.target.select()}/><p className="text-xs text-muted">{link.emailed ? 'An email was sent.' : 'Email is not configured, so copy this link and send it yourself.'} Expires {fmt(link.expiresAt)}.</p><button className="btn btn-primary" onClick={() => { navigator.clipboard?.writeText(link.link); notify('Link copied'); }}>Copy link</button></div></Modal>}
@@ -66,20 +69,22 @@ function InviteModal({ onClose, onDone }) {
     const [schedule, setSchedule] = useState(null);
     const [reminders, setReminders] = useState(true);
     const [weekly, setWeekly] = useState(false);
+    const [states, setStates] = useState([]);
     const [err, setErr] = useState('');
     const depts = all ? [...ALL] : f.departments;
     const target = parseInt(f.target, 10);
     const sched = schedule ?? (target > 0 ? buildSchedule(depts, target) : []);
     const toggleDept = (d) => { setAll(false); setSchedule(null); setF({ ...f, departments: f.departments.includes(d) ? f.departments.filter((x) => x !== d) : [...f.departments, d] }); };
-    const send = useMutation({ mutationFn: () => api('/invitations', { method: 'POST', body: { email: f.email, name: f.name || undefined, role: 'member', departments: depts, goals: { dailyTarget: target, schedule: sched, remindersEnabled: reminders, weeklyReportEnabled: weekly } } }), onSuccess: onDone, onError: (e) => setErr(e.issues?.[0]?.message || e.message) });
+    const send = useMutation({ mutationFn: () => api('/invitations', { method: 'POST', body: { email: f.email, name: f.name || undefined, role: 'member', departments: depts, states, goals: { dailyTarget: target, schedule: sched, remindersEnabled: reminders, weeklyReportEnabled: weekly } } }), onSuccess: onDone, onError: (e) => setErr(e.issues?.[0]?.message || e.message) });
     return <Modal title="Invite team member" desc="Their daily target is set by you; nothing is inherited from your own goal." onClose={onClose}><div className="space-y-3">
     <Field label="Email address"><input className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })}/></Field><Field label="Full name (optional)"><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })}/></Field>
     <div><label className="label">Campaigns</label><div className="flex flex-wrap gap-3 text-sm">{ALL.map((d) => <label key={d} className="flex items-center gap-2"><input type="checkbox" checked={depts.includes(d)} onChange={() => toggleDept(d)}/>{DEPT[d].name}</label>)}</div>
       <label className="flex items-center gap-2 text-sm mt-2"><input type="checkbox" checked={all} onChange={(e) => { setAll(e.target.checked); setSchedule(null); }}/>Assign all three campaign categories (applies the default weekly schedule)</label></div>
+    <div><label className="label">States they will work in</label><StatePicker value={states} onChange={setStates}/><p className="text-xs text-muted mt-1">They can only generate, import and contact leads in these states.</p></div>
     <Field label="Daily outreach target (prospects per day)"><input className="input" type="number" min={1} max={1000} value={f.target} onChange={(e) => { setF({ ...f, target: e.target.value }); setSchedule(null); }} placeholder="You choose this"/></Field>
     {depts.length > 0 && target > 0 && <div><label className="label">Weekly schedule</label><ScheduleEditor depts={depts} schedule={sched} onChange={setSchedule}/></div>}
     <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={reminders} onChange={(e) => setReminders(e.target.checked)}/>Daily goal reminders</label><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={weekly} onChange={(e) => setWeekly(e.target.checked)}/>Weekly performance report</label>
-    {err && <p role="alert" className="text-sm text-danger">{err}</p>}<div className="flex justify-end gap-2"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!/\S+@\S+/.test(f.email) || !depts.length || !(target > 0) || send.isPending} onClick={() => send.mutate()}>Generate invitation link</button></div></div></Modal>;
+    {err && <p role="alert" className="text-sm text-danger">{err}</p>}<div className="flex justify-end gap-2"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={!/\S+@\S+/.test(f.email) || !depts.length || !states.length || !(target > 0) || send.isPending} onClick={() => send.mutate()}>Generate invitation link</button></div></div></Modal>;
 }
 function GoalsModal({ u, onClose, onSaved }) {
     const [s, setS] = useState(u.schedule);
@@ -94,3 +99,11 @@ function GoalsModal({ u, onClose, onSaved }) {
     <Field label="Reminder email (optional, defaults to login email)"><input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)}/></Field>{err && <p role="alert" className="text-sm text-danger">{err}</p>}<div className="flex justify-end gap-2"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" onClick={() => save.mutate()} disabled={save.isPending}>Save goals</button></div></div></Modal>;
 }
 export { ScheduleEditor };
+
+function StatesModal({ m, onClose, onSaved }) {
+  const [v, setV] = useState(m.states || []); const [err, setErr] = useState(''); const owner = m.role === 'owner';
+  const save = useMutation({ mutationFn: () => api(`/team/${m.id}`, { method: 'PATCH', body: { states: v } }), onSuccess: onSaved, onError: (e) => setErr(e.issues?.[0]?.message || e.message) });
+  return <Modal title={`States for ${m.name}`} desc={owner ? 'Your outreach states. You are never blocked from other states; these are listed first when you discover leads.' : 'They can only generate, import and contact leads in these states. Leads they already have are not removed.'} onClose={onClose}>
+    <div className="space-y-3"><StatePicker value={v} onChange={setV} />{err && <p role="alert" className="text-sm text-danger">{err}</p>}
+      <div className="flex justify-end gap-2"><button className="btn" onClick={onClose}>Cancel</button><button className="btn btn-primary" disabled={save.isPending || (!owner && !v.length)} onClick={() => save.mutate()}>Save states</button></div></div></Modal>;
+}

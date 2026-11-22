@@ -6,7 +6,7 @@ export default function ImportResults() {
     const { result: r } = useApp();
     if (!r)
         return <Navigate to="/discover" replace/>;
-    const cards = [{ k: 'Imported', v: r.imported.length, c: 'text-ok' }, { k: 'Already existing / filtered', v: r.duplicates.length + (r.taken?.length || 0), c: '' }, { k: 'Need review', v: r.potential.length + r.review.length, c: 'text-[#9A6410]' }, { k: 'Rejected', v: r.rejected.length, c: 'text-danger' }];
+    const cards = [{ k: 'Imported', v: r.imported.length, c: 'text-ok' }, { k: 'Already existing / filtered', v: r.duplicates.length + (r.taken?.length || 0), c: '' }, { k: 'Need review', v: r.potential.length + r.review.length, c: 'text-[#9A6410]' }, { k: 'Rejected', v: r.rejected.length + (r.outside?.length || 0), c: 'text-danger' }];
     return <>
     <PageHeader title="Import results" desc="Only imported records were added to your leads." action={<div className="flex gap-2"><Link className="btn" to="/discover">Discover more</Link><Link className="btn btn-primary" to="/leads">View leads</Link></div>}/>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">{cards.map((c) => <div key={c.k} className="card p-4"><div className={`text-2xl font-semibold ${c.c}`}>{c.v}</div><div className="text-sm text-muted">{c.k}</div></div>)}</div>
@@ -17,6 +17,7 @@ export default function ImportResults() {
       <List title="Possible duplicates (not imported)" items={r.potential.map((x) => `${x.name}: similar to ${x.existing} (${x.matchedOn})`)}/>
       <List title="Imported, needs review" items={r.review.map((x) => `${x.name}${x.reason ? ': ' + x.reason : ''}`)}/>
       <List title="Updated existing leads" items={(r.updated || []).map((x) => x.name + (x.conflicts?.length ? ` (${x.conflicts.length} field(s) differ and were left unchanged)` : ''))}/>
+      <List title="Outside your assigned states (not imported)" items={(r.outside || []).map((x) => `${x.name}: ${x.reason}`)}/>
       <List title="Rejected" items={r.rejected.map((x) => `${x.name}: ${x.reason}`)}/>
     </div></>;
 }

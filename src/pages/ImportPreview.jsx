@@ -7,7 +7,7 @@ import { SourceBadge, VerifyBadge } from '../components/Badges';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { DEPT } from '../constants';
-const KIND = { new: { label: 'New', cls: 'bg-[#E6F5EF] text-ok' }, associate: { label: 'Exists in another workspace', cls: 'bg-blue-50 text-blue-700' }, duplicate: { label: 'Duplicate', cls: 'bg-[#FBE9EB] text-danger' }, potential: { label: 'Possible duplicate', cls: 'bg-[#FDF3E2] text-[#9A6410]' }, taken: { label: 'Held by a teammate', cls: 'bg-slate-100 text-slate-600' }, rejected: { label: 'Rejected', cls: 'bg-slate-100 text-slate-600' } };
+const KIND = { new: { label: 'New', cls: 'bg-[#E6F5EF] text-ok' }, associate: { label: 'Exists in another workspace', cls: 'bg-blue-50 text-blue-700' }, duplicate: { label: 'Duplicate', cls: 'bg-[#FBE9EB] text-danger' }, potential: { label: 'Possible duplicate', cls: 'bg-[#FDF3E2] text-[#9A6410]' }, outside: { label: 'Outside your states', cls: 'bg-[#FBE9EB] text-danger' }, taken: { label: 'Held by a teammate', cls: 'bg-slate-100 text-slate-600' }, rejected: { label: 'Rejected', cls: 'bg-slate-100 text-slate-600' } };
 export default function ImportPreview() {
     const { draft, setDraft, setResult, role, notify } = useApp();
     const nav = useNavigate();
@@ -16,7 +16,7 @@ export default function ImportPreview() {
     const [edit, setEdit] = useState(null);
     const [init, setInit] = useState(false);
     const recs = draft?.records || [];
-    const pv = useQuery({ queryKey: ['preview', draft?.dept, JSON.stringify(recs)], enabled: !!draft && recs.length > 0, queryFn: async () => { const r = await api('/leads/preview', { method: 'POST', body: { department: draft.dept, records: recs.map(({ action, ...x }) => x) } }); return r.items; } });
+    const pv = useQuery({ queryKey: ['preview', draft?.dept, draft?.state, draft?.city, JSON.stringify(recs)], enabled: !!draft && recs.length > 0, queryFn: async () => { const r = await api('/leads/preview', { method: 'POST', body: { department: draft.dept, query: draft.query, state: draft.state, city: draft.city, records: recs.map(({ action, ...x }) => x) } }); return r.items; } });
     if (!draft)
         return <Navigate to="/discover" replace/>;
     const items = pv.data || [];
@@ -26,9 +26,9 @@ export default function ImportPreview() {
     }
     const upd = (i, patch) => { const next = [...recs]; next[i] = { ...next[i], ...patch, verification: 'unverified', notes: [] }; setDraft({ ...draft, records: next }); setInit(false); };
     const remove = (i) => { setDraft({ ...draft, records: recs.filter((_, j) => j !== i) }); setSel(new Set()); setInit(false); setActions({}); };
-    const run = useMutation({ mutationFn: () => api('/leads/bulk-import', { method: 'POST', body: { department: draft.dept, source: draft.source, method: draft.method, query: draft.query, records: [...sel].map((i) => ({ ...recs[i], action: actions[i] })) } }),
+    const run = useMutation({ mutationFn: () => api('/leads/bulk-import', { method: 'POST', body: { department: draft.dept, source: draft.source, method: draft.method, query: draft.query, state: draft.state, city: draft.city, records: [...sel].map((i) => ({ ...recs[i], action: actions[i] })) } }),
         onSuccess: (r) => { setResult({ ...r, dept: draft.dept }); setDraft(null); notify('Import finished'); nav('/discover/results'); }, onError: (e) => notify(e.message) });
-    const counts = { new: items.filter((x) => x.kind === 'new' || x.kind === 'associate').length, dup: items.filter((x) => x.kind === 'duplicate' || x.kind === 'taken').length, pot: items.filter((x) => x.kind === 'potential').length };
+    const counts = { new: items.filter((x) => x.kind === 'new' || x.kind === 'associate').length, dup: items.filter((x) => x.kind === 'duplicate' || x.kind === 'taken').length, pot: items.filter((x) => x.kind === 'potential' || x.kind === 'outside').length };
     return <>
     <PageHeader title="Review before importing" desc={`Going into ${DEPT[draft.dept].name}. The server checks every record against all workspaces.`} action={<div className="flex gap-2"><button className="btn" onClick={() => setSel(new Set(items.map((_, i) => i)))}>Select all</button><button className="btn" onClick={() => setSel(new Set())}>Deselect all</button></div>}/>
     {!recs.length ? <Empty title="No records to review" desc="Everything was removed. Go back to discovery to collect more." action={<Link className="btn btn-primary" to="/discover">Back to discovery</Link>}/> : pv.isLoading ? <Skeleton rows={5}/> : pv.error ? <ErrorBox error={pv.error} retry={pv.refetch}/> : <>
@@ -40,7 +40,7 @@ export default function ImportPreview() {
                 const k = KIND[it.kind];
                 const canImport = ['new', 'associate'].includes(it.kind) || !!actions[i];
                 return <div key={i} className="card p-4"><div className="flex gap-3 items-start"><input type="checkbox" className="mt-1.5 w-4 h-4" disabled={!canImport} checked={sel.has(i) && canImport} onChange={() => { const s = new Set(sel); s.has(i) ? s.delete(i) : s.add(i); setSel(s); }} aria-label={`Select ${r.name}`}/>
-          <div className="flex-1 min-w-0">{edit === i ? <div className="grid sm:grid-cols-2 gap-2">{['name', 'phone', 'email', 'website'].map((f) => <div key={f}><label className="label">{f[0].toUpperCase() + f.slice(1)}</label><input className="input" defaultValue={r[f] || ''} onBlur={(e) => upd(i, { [f]: e.target.value.trim() || undefined })}/></div>)}<div className="sm:col-span-2"><button className="btn btn-primary" onClick={() => setEdit(null)}>Done</button></div></div> : <>
+          <div className="flex-1 min-w-0">{edit === i ? <div className="grid sm:grid-cols-2 gap-2">{['name', 'phone', 'email', 'website', 'city', 'state'].map((f) => <div key={f}><label className="label">{f[0].toUpperCase() + f.slice(1)}</label><input className="input" defaultValue={r[f] || ''} onBlur={(e) => upd(i, { [f]: e.target.value.trim() || undefined })}/></div>)}<div className="sm:col-span-2"><button className="btn btn-primary" onClick={() => setEdit(null)}>Done</button></div></div> : <>
             <div className="flex flex-wrap items-center gap-2"><span className="font-medium">{r.name || <span className="text-danger">Missing name</span>}</span><span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${k.cls}`}>{k.label}</span></div>
             <div className="text-sm text-muted break-words">{r.phone || 'No phone'} &middot; {r.website || r.social || 'No website or profile'}{r.email ? ` · ${r.email}` : ''}</div>
             {it.reason && <div className="text-xs text-danger mt-1">{it.reason}</div>}{it.kind === 'taken' && <div className="text-xs text-muted mt-1">A teammate already has this business, so it is filtered out of your import.</div>}{it.matchedOn && <div className="text-xs text-[#9A6410] mt-1">Matches {it.existing?.name || 'an existing record'} on {it.matchedOn}. {it.existing?.leadId && <Link className="underline" to={`/leads/${it.existing.leadId}`} target="_blank">Inspect</Link>}</div>}
