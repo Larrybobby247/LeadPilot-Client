@@ -1,5 +1,5 @@
 // All server calls go through here. The access token lives in memory only; the refresh token is an httpOnly cookie.
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+const BASE = import.meta.env.VITE_API_URL || 'https://leadpilot-server.onrender.com';
 let token = null;
 let onAuthLost = () => { };
 export const setToken = (t) => { token = t; };
