@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, Link, useNavigate, Outlet } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LayoutDashboard, Users, CalendarClock, Megaphone, Utensils, BedDouble, Globe, Compass, Chrome, History, UsersRound, BarChart3, MessageSquareText, ScrollText, Plug, Settings, Bell, Menu, PanelLeftClose, PanelLeftOpen, Search, Plane, LogOut, Send } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarClock, Megaphone, Utensils, BedDouble, Globe, Compass, Chrome, History, UsersRound, BarChart3, MessageSquareText, ScrollText, Plug, Settings, Bell, Menu, PanelLeftClose, PanelLeftOpen, Search, Plane, LogOut, Send, LayoutTemplate } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 const GROUPS = [
@@ -9,7 +9,7 @@ const GROUPS = [
     { title: 'Workspaces', items: [{ to: '/workspace/ordarly', label: 'Ordarly', Icon: Utensils }, { to: '/workspace/keykonnec', label: 'KeyKonnec', Icon: BedDouble }, { to: '/workspace/website', label: 'Website Outreach', Icon: Globe }] },
     { title: 'Discovery', items: [{ to: '/discover', label: 'Discover Leads', Icon: Compass }, { to: '/extension', label: 'Chrome Extension', Icon: Chrome }, { to: '/extension/history', label: 'Collection History', Icon: History }] },
     { title: 'Insights', items: [{ to: '/analytics', label: 'Analytics', Icon: BarChart3 }, { to: '/templates', label: 'Message Templates', Icon: MessageSquareText }, { to: '/activity', label: 'Activity', Icon: ScrollText }] },
-    { title: 'Management', items: [{ to: '/team', label: 'Team Members', Icon: UsersRound, owner: true }, { to: '/integrations', label: 'Integrations', Icon: Plug, owner: true }] },
+    { title: 'Management', items: [{ to: '/team', label: 'Team Members', Icon: UsersRound, owner: true }, { to: '/website-templates', label: 'Website Templates', Icon: LayoutTemplate, owner: true }, { to: '/integrations', label: 'Integrations', Icon: Plug, owner: true }] },
     { title: 'System', items: [{ to: '/settings', label: 'Settings', Icon: Settings }] },
 ];
 export default function Layout() {

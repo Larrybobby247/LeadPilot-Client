@@ -28,7 +28,7 @@ export default function Composer({ lead, pendingEventId }) {
     setTid(id); setErr(''); setResult(null); if (!id) return;
     try { const r = await api('/outreach/preview', { method: 'POST', body: { leadId: lead.id, templateId: id } }); setText(r.text); setMissing(r.missing); } catch (e) { setErr(e.message); }
   };
-  const refresh = () => { qc.invalidateQueries({ queryKey: ['lead', lead.id] }); qc.invalidateQueries({ queryKey: ['leads'] }); qc.invalidateQueries({ queryKey: ['followups'] }); qc.invalidateQueries({ queryKey: ['goals-today'] }); };
+  const refresh = () => { qc.invalidateQueries({ queryKey: ['lead', lead.id] }); qc.invalidateQueries({ queryKey: ['leads'] }); qc.invalidateQueries({ queryKey: ['followups'] }); qc.invalidateQueries({ queryKey: ['goals-today'] }); qc.invalidateQueries({ queryKey: ['lead-website'] }); };
 
   const open = useMutation({
     mutationFn: async ({ business, force }) => {
