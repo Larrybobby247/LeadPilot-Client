@@ -6,6 +6,7 @@ import { Skeleton, ErrorBox, Modal, Field } from '../components/ui';
 import { SourceBadge, StatusBadge, VerifyBadge, WebsiteBadge } from '../components/Badges';
 import Composer from '../components/Composer';
 import AiPanel from '../components/AiPanel';
+import WebsiteCard from '../components/WebsiteCard';
 import ConversationPanel from '../components/ConversationPanel';
 import { api } from '../services/api';
 import { useApp } from '../context/AppContext';
@@ -54,6 +55,7 @@ export default function LeadDetail() {
             <div><dt className="text-muted">Contact person</dt><dd>{l.contactPerson || '-'}</dd></div><div><dt className="text-muted">Completeness</dt><dd>{l.completeness ?? 0}% ({l.completenessBand})</dd></div>
             <div><dt className="text-muted">Source</dt><dd className="space-y-1"><SourceBadge source={l.source}/>{l.sourceUrl && l.sourceUrl.startsWith('http') && <a className="block text-primary break-all text-xs" href={l.sourceUrl} target="_blank" rel="noreferrer noopener">Original source</a>}</dd></div>
             <div><dt className="text-muted">Verification</dt><dd className="space-y-1"><VerifyBadge v={l.verification}/><select className="input !min-h-[32px] !py-1 text-xs" value={l.verification} onChange={(e) => patchM.mutate({ body: { verification: e.target.value }, msg: 'Verification updated' })} aria-label="Set verification"><option value="verified">Verified</option><option value="unverified">Unverified</option><option value="requires_review">Needs review</option></select></dd></div></dl></section>
+        {l.department === 'website' && <WebsiteCard lead={l} />}
         {l.department === 'website' && <section className="card p-4 space-y-2"><h2 className="font-medium">Website verification</h2><div className="flex items-center gap-2"><WebsiteBadge s={b.websiteStatus}/><span className="text-xs text-muted">Last checked {fmt(b.websiteCheckedAt)}</span></div><p className="text-sm text-muted">{b.websiteReason || 'Not checked yet.'}</p>
           <div className="flex flex-wrap gap-2"><button className="btn" disabled={!b.website || check.isPending} onClick={() => check.mutate()}>Check now</button><select className="input !w-auto" value="" onChange={(e) => e.target.value && wsSet.mutate(e.target.value)} aria-label="Set website status manually"><option value="">Set status manually</option><option value="WORKING_WEBSITE">Working website</option><option value="NO_WEBSITE">No website</option><option value="BROKEN_WEBSITE">Broken website</option><option value="PARKED_DOMAIN">Parked domain</option><option value="UNCERTAIN">Uncertain</option></select></div></section>}
         <div role="tablist" className="flex gap-1 border-b border-line">{[['outreach', 'Outreach'], ['ai', 'AI messages'], ['conversation', 'Conversation']].map(([k, t]) => <button key={k} role="tab" aria-selected={tab === k} onClick={() => setTab(k)} className={`px-4 py-2.5 text-sm border-b-2 ${tab === k ? 'border-primary text-primary font-medium' : 'border-transparent text-muted'}`}>{t}</button>)}</div>
