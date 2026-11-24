@@ -16,6 +16,7 @@ import ExtensionHistory from './pages/ExtensionHistory';
 import Followups from './pages/Followups';
 import Campaigns from './pages/Campaigns';
 import Templates from './pages/Templates';
+import WebsiteTemplates from './pages/WebsiteTemplates';
 import Analytics from './pages/Analytics';
 import Team from './pages/Team';
 import { Notifications, Activity, Integrations, SettingsPage } from './pages/System';
@@ -34,7 +35,7 @@ export default function App() {
         <Route path="extension" element={<ExtensionSettings />}/><Route path="extension/history" element={<ExtensionHistory />}/>
         <Route path="followups" element={<Followups />}/><Route path="campaigns" element={<Campaigns />}/><Route path="templates" element={<Templates />}/><Route path="analytics" element={<Analytics />}/>
         <Route path="notifications" element={<Notifications />}/><Route path="activity" element={<Activity />}/><Route path="settings" element={<SettingsPage />}/>
-        <Route path="team" element={owner(<Team />)}/><Route path="integrations" element={owner(<Integrations />)}/>
+        <Route path="team" element={owner(<Team />)}/><Route path="integrations" element={owner(<Integrations />)}/><Route path="website-templates" element={owner(<WebsiteTemplates />)}/>
         <Route path="login" element={<Navigate to="/" replace/>}/><Route path="*" element={<Navigate to="/" replace/>}/>
       </Route>
     </Routes>);
