@@ -1,5 +1,5 @@
 // All server calls go through here. The access token lives in memory only; the refresh token is an httpOnly cookie.
-const BASE = import.meta.env.VITE_API_URL || 'https://leadpilot-server.onrender.com';
+const BASE = import.meta.env.VITE_API_URL || 'http://localhost:4000';
 let token = null;
 let onAuthLost = () => { };
 export const setToken = (t) => { token = t; };
@@ -58,3 +58,22 @@ export async function api(path, opts = {}) {
     return data;
 }
 export const qs = (o) => { const p = new URLSearchParams(); Object.entries(o).forEach(([k, v]) => v !== undefined && v !== '' && v !== null && p.set(k, String(v))); const s = p.toString(); return s ? '?' + s : ''; };
+
+// ---- binary helpers (website templates and downloads) ----
+export const apiUrl = (path) => BASE + path;
+const authed = async (path, init) => {
+  const go = () => fetch(BASE + '/api' + path, { ...init, credentials: 'include', headers: { ...(init.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  let res; try { res = await go(); } catch { throw new ApiError(0, 'Cannot reach the server. Check your connection and try again.'); }
+  if (res.status === 401 && await refresh()) res = await go();
+  return res;
+};
+export async function apiUpload(path, bytes, filename) {
+  const res = await authed(path, { method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'X-Filename': encodeURIComponent(filename) }, body: bytes });
+  const data = await res.json().catch(() => ({})); if (!res.ok) throw new ApiError(res.status, data.message || 'Upload failed', data); return data;
+}
+export async function apiDownload(path, fallbackName = 'download.zip') {
+  const res = await authed(path, { method: 'GET', headers: {} });
+  if (!res.ok) { const d = await res.json().catch(() => ({})); throw new ApiError(res.status, d.message || 'Download failed', d); }
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') || '')?.[1] || fallbackName;
+  const url = URL.createObjectURL(await res.blob()); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
